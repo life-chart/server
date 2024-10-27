@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model, Types } from 'mongoose';
 
@@ -37,7 +37,7 @@ export class TaskRepository {
       type?: TaskTypes;
       isCompleted?: boolean;
     },
-  ): Promise<Task | null> {
+  ): Promise<Task> {
     if (Object.keys(data).length === 0) {
       throw new BadRequestException('No data provided');
     }
@@ -46,7 +46,11 @@ export class TaskRepository {
       .findOneAndUpdate({ _id: new Types.ObjectId(id) }, data, { lean: true, new: true })
       .exec();
 
-    return task ? TaskMapper.mapEntityToModel(task) : null;
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    return TaskMapper.mapEntityToModel(task);
   }
 
   public async findOne(input: { id: string }): Promise<Task | null> {
@@ -66,5 +70,14 @@ export class TaskRepository {
 
     const tasks = await this.taskEntity.find(filter).sort({ createdAt: -1 }).lean().exec();
     return tasks.map(TaskMapper.mapEntityToModel);
+  }
+
+  public async deleteOne(input: { id: string }): Promise<void> {
+    const filter: Partial<TaskEntity> = { _id: new Types.ObjectId(input.id) };
+    const task = await this.taskEntity.findOneAndDelete(filter).exec();
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
   }
 }
