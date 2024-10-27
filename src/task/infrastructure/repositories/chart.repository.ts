@@ -36,6 +36,8 @@ export class ChartRepository {
     const chart: Chart = [];
     const dailyTotals: Record<string, number[]> = {};
 
+    let previousY1 = 0;
+
     for (const task of tasks) {
       const dateKey = format(new Date(task.createdAt), 'dd.MM.yy');
       const points = task.isCompleted ? task.points : -task.points;
@@ -49,17 +51,15 @@ export class ChartRepository {
       } else if (task.type === TaskTypes.NEGATIVE) {
         dailyTotals[dateKey][1] -= points;
       }
-    }
 
-    let previousY1 = 0;
-
-    for (const [date, totals] of Object.entries(dailyTotals)) {
-      const bar: Bar = {
-        position: [previousY1, previousY1 + totals[1]],
-        date: date,
-      };
-      chart.push(bar);
-      previousY1 += totals[1];
+      if (!chart.length || chart[chart.length - 1].date !== dateKey) {
+        const bar: Bar = {
+          position: [previousY1, previousY1 + dailyTotals[dateKey][1]],
+          date: dateKey,
+        };
+        chart.push(bar);
+        previousY1 += dailyTotals[dateKey][1];
+      }
     }
 
     return chart;
